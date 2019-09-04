@@ -40,19 +40,25 @@ import io.mockk.verify
 import io.mockk.every
 import io.mockk.mockkClass
 
-/*@ObsoleteCoroutinesApi
+@ObsoleteCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
 @Config(application = TestApplication::class)
 
 
 
 class ContextTest() {
-    val mockContext: Context = mockk(relaxed=true)
-    val mockFenixApp: FenixApplication = mockk(relaxed=true)
+   // var mockContext: Context = spyk()
+    val mockCTW: ContextThemeWrapper = mockk(relaxed=true)
+    val mockActivity: Activity = mockk(relaxed=true)
+   // val mockFenixApp: FenixApplication = mockk(relaxed=true)
 
     @Test
-    fun `Test setting application`() {
-        mockContext.application = mockFenixApp
-        verify {(get())}
+    fun `Test context as activity`() {
+        //every { (testContext as? ContextThemeWrapper)?.baseContext as? Activity
+        //        ?: testContext as? Activity } returns mockActivity
+        every { testContext.asActivity() } returns mockActivity
+        var mockCT2 = testContext.asActivity()
+        println(mockCT2)
+        assertEquals(true, (mockCT2 is Context))
     }
-}*/
+}

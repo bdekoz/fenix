@@ -7,12 +7,20 @@ package org.mozilla.fenix.ui
 import androidx.test.uiautomator.UiDevice
 import org.junit.Rule
 import org.junit.Test
+<<<<<<< HEAD
 import org.junit.Ignore
+=======
+import org.junit.Before
+import org.junit.After
+>>>>>>> fix: broken test
 import org.mozilla.fenix.helpers.HomeActivityTestRule
+import org.mozilla.fenix.helpers.TestAssetHelper
+import org.mozilla.fenix.helpers.TestAssetHelper.waitingTime
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
-import org.mozilla.fenix.helpers.TestAssetHelper.waitingTime
+import org.mozilla.fenix.helpers.AndroidAssetDispatcher
+import okhttp3.mockwebserver.MockWebServer
 import org.mozilla.fenix.ui.robots.PRIVATE_SESSION_MESSAGE
 import org.mozilla.fenix.ui.robots.homeScreen
 
@@ -27,9 +35,25 @@ class HomeScreenTest {
     /* ktlint-disable no-blank-line-before-rbrace */ // This imposes unreadable grouping.
 
     private val mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+    private lateinit var mockWebServer: MockWebServer
+
 
     @get:Rule
     val activityTestRule = HomeActivityTestRule()
+
+
+    @Before
+    fun setUp() {
+        mockWebServer = MockWebServer().apply {
+            setDispatcher(AndroidAssetDispatcher())
+            start()
+        }
+    }
+
+    @After
+    fun tearDown() {
+        mockWebServer.shutdown()
+    }
 
     @Test
     fun homeScreenItemsTest() {
@@ -97,27 +121,38 @@ class HomeScreenTest {
     @Ignore("Temp disable broken test - see:  https://github.com/mozilla-mobile/fenix/issues/5050")
 
     fun privateModeScreenItemsTest() {
+        val defaultWebPage = TestAssetHelper.getGenericAsset(mockWebServer, 1)
+
         homeScreen { }.dismissOnboarding()
         homeScreen { }.togglePrivateBrowsingMode()
 
         homeScreen {
+            //open a demo site
             verifyHomeScreen()
             verifyNavigationToolbar()
             verifyHomePrivateBrowsingButton()
-            verifyHomeMenu()
+//            verifyHomeMenu()
             verifyHomeWordmark()
-            verifyAddTabButton()
-            verifyShareTabsButton(visible = false)
-            verifyCloseTabsButton(visible = false)
             verifyPrivateSessionHeader()
+            verifyShareTabsButtonDoesNotExist()
+            verifyCloseTabsButtonDoesNotExist()
+            verifyAddTabButton()
             verifyPrivateSessionMessage(visible = true)
             verifyHomeToolbar()
             verifyHomeComponent()
-        }
 
-        homeScreen { }.addNewTab()
+        // browse to mock web page so tab elements appear
+        }.enterURLAndEnterToBrowser(defaultWebPage.url) {
+        }.goBackToHomeScreen {
+            verifyHomeScreen()
+            verifyShareTabsButton()
+            verifyCloseTabButton()
+//        }
 
-        homeScreen {
+        // replace mozilla.org w/ localhost
+//        homeScreen {
+//        }.addNewTab()
+//        homeScreen {
             // To deal with the race condition where multiple "add tab" buttons are present,
             // we need to wait until previous HomeFragment View objects are gone.
             mDevice.wait(Until.gone(By.text(PRIVATE_SESSION_MESSAGE)), waitingTime)
@@ -127,8 +162,8 @@ class HomeScreenTest {
             verifyHomeMenu()
             verifyHomeWordmark()
             verifyAddTabButton()
-            verifyShareTabsButton(visible = true)
-            verifyCloseTabsButton(visible = true)
+            verifyShareTabsButton()
+            verifyCloseTabButton()
             verifyPrivateSessionHeader()
             verifyPrivateSessionMessage(visible = false)
             verifyHomeToolbar()

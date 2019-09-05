@@ -6,8 +6,11 @@
 
 package org.mozilla.fenix.ui.robots
 
+import android.net.Uri
 import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.action.ViewActions
 import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.assertion.ViewAssertions
 import androidx.test.espresso.assertion.ViewAssertions.doesNotExist
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers
@@ -15,13 +18,14 @@ import androidx.test.espresso.matcher.ViewMatchers.Visibility
 import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
 import androidx.test.espresso.matcher.ViewMatchers.withEffectiveVisibility
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.uiautomator.UiDevice
-import androidx.test.uiautomator.UiScrollable
-import androidx.test.uiautomator.UiSelector
+import androidx.test.uiautomator.*
+import okhttp3.mockwebserver.MockWebServer
 import org.hamcrest.CoreMatchers
-import org.hamcrest.Matchers.allOf
-import org.hamcrest.Matchers.containsString
+import org.hamcrest.Matchers.*
 import org.mozilla.fenix.R
+import org.mozilla.fenix.helpers.TestAssetHelper
+import org.mozilla.fenix.helpers.TestAssetHelper.waitingTime
+import org.mozilla.fenix.helpers.click
 
 /**
  * Implementation of Robot Pattern for the home screen menu.
@@ -70,8 +74,10 @@ class HomeScreenRobot {
     // Private mode elements
     fun verifyPrivateSessionHeader() = assertPrivateSessionHeader()
     fun verifyPrivateSessionMessage(visible: Boolean = true) = assertPrivateSessionMessage(visible)
-    fun verifyShareTabsButton(visible: Boolean = true) = assertShareTabsButton(visible)
-    fun verifyCloseTabsButton(visible: Boolean = true) = assertCloseTabsButton(visible)
+    fun verifyShareTabsButton() = assertShareTabsButton()
+    fun verifyCloseTabButton() = assertCloseTabButton()
+    fun verifyShareTabsButtonDoesNotExist() = assertShareTabsButtonDoesNotExist()
+    fun verifyCloseTabsButtonDoesNotExist() = assertCloseTabsButtonDoesNotExist()
 
     fun verifyExistingTabList() = assertExistingTabList()
 
@@ -87,6 +93,8 @@ class HomeScreenRobot {
 
     class Transition {
         val mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        private lateinit var mockWebServer: MockWebServer
+
 
         fun openThreeDotMenu(interact: ThreeDotMenuRobot.() -> Unit): ThreeDotMenuRobot.Transition {
             mDevice.waitForIdle()
@@ -104,13 +112,36 @@ class HomeScreenRobot {
             return SearchRobot.Transition()
         }
 
-        fun dismissOnboarding() {
-            openThreeDotMenu { }.openSettings { }.goBack { }
+        fun enterURLAndEnterToBrowser(url: Uri, interact: BrowserRobot.() -> Unit): BrowserRobot.Transition {
+            mDevice.wait(
+                Until.findObject(By.text("Search or enter address")),
+                TestAssetHelper.waitingTime
+            )
+            urlBar().click()
+            awesomeBar().perform(
+                ViewActions.replaceText(url.toString()),
+                ViewActions.pressImeActionButton()
+            )
+
+            BrowserRobot().interact()
+            return BrowserRobot.Transition()
         }
 
-        fun addNewTab() {
-            openSearch { }.openBrowser { }.openHomeScreen { }
+
+        fun dismissOnboarding() {
+            openThreeDotMenu {
+            }.openSettings {
+            }.goBack {
+            }
         }
+
+//        fun addNewTab() {
+////            openSearch {
+////            }.openBrowser {
+////            }.openHomeScreen {
+////            }
+////        }
+
 
         fun togglePrivateBrowsingMode() {
             onView(ViewMatchers.withResourceName("privateBrowsingButton"))
@@ -126,6 +157,10 @@ class HomeScreenRobot {
         }
     }
 }
+
+private fun urlBar() = onView(ViewMatchers.withId(R.id.toolbar))
+private fun awesomeBar() = onView(ViewMatchers.withId(R.id.mozac_browser_toolbar_edit_url_view))
+
 
 fun homeScreen(interact: HomeScreenRobot.() -> Unit): HomeScreenRobot.Transition {
     HomeScreenRobot().interact()
@@ -306,15 +341,22 @@ private fun assertPrivateSessionMessage(visible: Boolean) =
             if (visible) matches(withEffectiveVisibility(Visibility.VISIBLE)) else doesNotExist()
         )
 
-private fun assertShareTabsButton(visible: Boolean) =
-    onView(CoreMatchers.allOf(ViewMatchers.withId(R.id.share_tabs_button), isDisplayed()))
-        .check(matches(withEffectiveVisibility(visibleOrGone(visible))))
+private fun assertShareTabsButtonDoesNotExist() =
+     onView(ViewMatchers.withId(R.id.share_tabs_button))
+         .check(ViewAssertions.matches(ViewMatchers.withEffectiveVisibility(ViewMatchers.Visibility.GONE)))
 
-private fun assertCloseTabsButton(visible: Boolean) =
-    onView(CoreMatchers.allOf(ViewMatchers.withId(R.id.close_tab_button), isDisplayed()))
-        .check(matches(withEffectiveVisibility(visibleOrGone(visible))))
+private fun assertCloseTabsButtonDoesNotExist() =
+    onView(ViewMatchers.withId(R.id.close_tab_button)).check(doesNotExist())
 
-private fun visibleOrGone(visibility: Boolean) = if (visibility) Visibility.VISIBLE else Visibility.GONE
+private fun assertShareTabsButton() {
+    mDevice.wait(Until.findObject(By.res("share_tabs_button")), waitingTime)
+    onView(ViewMatchers.withId(R.id.share_tabs_button))
+        .check(ViewAssertions.matches(ViewMatchers.withEffectiveVisibility(ViewMatchers.Visibility.VISIBLE)))
+}
+
+private fun assertCloseTabButton() =
+    onView(ViewMatchers.withId(R.id.close_tab_button))
+        .check(ViewAssertions.matches(ViewMatchers.withEffectiveVisibility(ViewMatchers.Visibility.VISIBLE)))
 
 private fun assertExistingTabList() =
     onView(CoreMatchers.allOf(ViewMatchers.withId(R.id.item_tab)))

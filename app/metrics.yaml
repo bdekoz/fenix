@@ -406,6 +406,21 @@ metrics:
     notification_emails:
     - fenix-core@mozilla.com
     expires: "2019-09-01"
+  composite_time:
+    duration:
+      type: timing_distribution
+      time_unit: millisecond
+      gecko_datapoint: COMPOSITE_TIME
+      description: |
+        Composite times in milliseconds.
+      bugs:
+        - 1080160
+        - 1529352
+      data_reviews:
+        - https://bugzilla.mozilla.org/show_bug.cgi?id=1529352
+      notification_emails:
+        - telemetry-performance-dev@mozilla.com
+      expires: "2020-12-01"
 
 search.default_engine:
   code:
